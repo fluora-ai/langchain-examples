@@ -1,8 +1,11 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "fluora-mcp@latest"]
+    "fluora": {
+      "command": "/Users/guilhermesantos/.nvm/versions/node/v22.14.0/bin/npx",
+      "args": ["-y", "fluora-mcp@latest"],
+      "env": {
+        "FLUORA_API_URL": "https://2bwsfmjzdd.us-west-2.awsapprunner.com/api"
+      }
     }
   }
 }
