@@ -21,7 +21,7 @@ const initStdioClient = async () => {
 
 async function main() {
   const stdioClient = await initStdioClient();
-
+  const toolResponses = [];
   const model = new ChatOpenAI({
     temperature: 0,
     apiKey: process.env.OPENAI_API_KEY,
@@ -35,21 +35,34 @@ async function main() {
 
   console.log("Searching servers on fluora");
   const result = await agent.invoke({
-    messages: [{ role: "user", content: "Search servers on fluora" }],
+    messages: [
+      {
+        role: "user",
+        content:
+          "Search servers on fluora and return the serverId and mcpServerUrl",
+      },
+    ],
   });
-  console.log(result);
+  toolResponses.push('List servers response: ' + result.messages[3].content);
+  console.log(result.messages[3].content);
 
   console.log("Listing tools from the PDF shift server");
   const listTools = await agent.invoke({
     messages: [
+      { role: "system", content: toolResponses.join("\n") },
       { role: "user", content: "List tools from the PDF shift server" },
     ],
   });
-  console.log(listTools);
+  toolResponses.push(listTools.messages[2].content);
+  console.log(listTools.messages[2].content);
 
   console.log("Pricing listing");
   const pricingListing = await agent.invoke({
     messages: [
+      {
+        role: "system",
+        content: toolResponses.join("\n"),
+      },
       {
         role: "user",
         content: `Call the pricing listing tool from the server using the callServerTool.
@@ -65,42 +78,46 @@ async function main() {
       },
     ],
   });
-  console.log(pricingListing);
+  toolResponses.push(pricingListing.messages[2].content);
+  console.log(pricingListing.messages[2].content);
 
   console.log("Payment methods");
   const paymentMethods = await agent.invoke({
     messages: [
+      { role: "system", content: `Previous responses: ${toolResponses.join("\n")}` },
       {
         role: "user",
-        content: `Call the payment methods tool from the server using the callServerTool.
+        content: `Call the payment-methods tool from the server using the callServerTool.
           Pass all params to the server:
           {
-            "serverId": get the serverId from the list servers response,
-            "mcpServerUrl": get the mcpServerUrl from the list servers response,
+            "serverId": get the serverId from the previous response,
+            "mcpServerUrl": get the mcpServerUrl from the previous response,
             "toolName": "payment-methods",
             "args": {}
           }`,
       },
     ],
   });
-  console.log(paymentMethods);
+  toolResponses.push('Payment methods response: ' + paymentMethods.messages[3].content);
+  console.log(paymentMethods.messages[3].content);
 
-  console.log("Make a purchase");
+  console.log("Making a purchase");
   const makePurchase = await agent.invoke({
     messages: [
+      { role: "system", content: toolResponses.join("\n") },
       {
         role: "user",
         content: `Call the 'make-purchase' tool from the server using the callServerTool.
           Pass all params to the server:
           {
-            "serverId": get the serverId from the previous response,
-            "mcpServerUrl": get the mcpServerUrl from the previous response,
+            "serverId": get the serverId from the list servers response,
+            "mcpServerUrl": get the mcpServerUrl from the list servers response,
             "toolName": "make-purchase",
             "args": {
               "params": {
                 "websiteUrl": "https://www.fluora.ai/"
               },
-              "itemId": get the itemId from the pricing listing response,
+              "itemId": "1",
               "serverWalletAddress": get the serverWalletAddress from the payment methods response,
               "itemPrice": get the itemPrice from the pricing listing response,
               "paymentMethod": "USDC_BASE_SEPOLIA",
@@ -110,8 +127,8 @@ async function main() {
       },
     ],
   });
-
-  console.log(makePurchase);
+  toolResponses.push(makePurchase.messages[3].content);
+  console.log(makePurchase.messages[3].content);
 }
 
 main().catch(console.error);
