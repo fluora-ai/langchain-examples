@@ -5,6 +5,9 @@ import { initializeAgentExecutorWithOptions } from "langchain/agents";
 import { loadMcpTools } from "@langchain/mcp-adapters";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import "dotenv/config";
+import { ClaudeCode } from "claude-code-js";
+import { ChatAnthropic } from '@langchain/anthropic';
+
 
 const initStdioClient = async () => {
   const client = new Client({
@@ -22,15 +25,15 @@ const initStdioClient = async () => {
 async function main() {
   const stdioClient = await initStdioClient();
   const toolResponses = [];
-  const model = new ChatOpenAI({
-    temperature: 0,
-    apiKey: process.env.OPENAI_API_KEY,
-    model: "gpt-4.1",
+  const claude = new ChatAnthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    model: 'claude-3-5-sonnet-20241022',
   });
   const tools = await loadMcpTools("fluora-mcp", stdioClient as any);
   const agent = createReactAgent({
-    llm: model,
+    llm: claude,
     tools,
+    prompt: "You are a helpful assistant that can help with tasks. You have access to the following tools: searchFluora, listTools, callServerTool. You are given a task and you need to complete it using the tools. You need to return the tool response as JSON, no explanations. You have to use the mcp tools to complete the task.",
   });
 
   console.log("Searching servers on fluora");
@@ -39,96 +42,74 @@ async function main() {
       {
         role: "user",
         content:
-          "Search servers on fluora and return the serverId and mcpServerUrl",
+          "Search servers on fluora and return all the data from the response",
       },
     ],
   });
-  toolResponses.push('List servers response: ' + result.messages[3].content);
-  console.log(result.messages[3].content);
+  toolResponses.push({
+    role: "user",
+    content: result.messages.slice(-2)[0].content,
+  });
+  console.log(result.messages.slice(-2)[0].content);
 
   console.log("Listing tools from the PDF shift server");
   const listTools = await agent.invoke({
     messages: [
-      { role: "system", content: toolResponses.join("\n") },
+      ...toolResponses,
       { role: "user", content: "List tools from the PDF shift server" },
     ],
   });
-  toolResponses.push(listTools.messages[2].content);
-  console.log(listTools.messages[2].content);
+  toolResponses.push({
+    role: "user",
+    content: listTools.messages.slice(-2)[0].content,
+  });
+  console.log(listTools.messages.slice(-2)[0].content);
+
+  console.log(...toolResponses);
 
   console.log("Pricing listing");
   const pricingListing = await agent.invoke({
     messages: [
-      {
-        role: "system",
-        content: toolResponses.join("\n"),
-      },
+      ...toolResponses,
       {
         role: "user",
-        content: `Call the pricing listing tool from the server using the callServerTool.
-          Pass all params to the server:
-          {
-            "serverId": get the serverId from the previous response,
-            "mcpServerUrl": get the mcpServerUrl from the previous response,
-            "toolName": "pricing-listing",
-            "args": {
-              "searchQuery": ""
-            }
-          }`,
+        content: `Pricing listing`,
       },
     ],
   });
-  toolResponses.push(pricingListing.messages[2].content);
-  console.log(pricingListing.messages[2].content);
+  toolResponses.push({
+    role: "user",
+    content: pricingListing.messages.slice(-2)[0].content,
+  });
+  console.log(pricingListing.messages.slice(-2)[0].content);
 
   console.log("Payment methods");
   const paymentMethods = await agent.invoke({
     messages: [
-      { role: "system", content: `Previous responses: ${toolResponses.join("\n")}` },
+      ...toolResponses,
       {
         role: "user",
-        content: `Call the payment-methods tool from the server using the callServerTool.
-          Pass all params to the server:
-          {
-            "serverId": get the serverId from the previous response,
-            "mcpServerUrl": get the mcpServerUrl from the previous response,
-            "toolName": "payment-methods",
-            "args": {}
-          }`,
+        content: `Payment methods from pdf shift server`,
       },
     ],
   });
-  toolResponses.push('Payment methods response: ' + paymentMethods.messages[3].content);
-  console.log(paymentMethods.messages[3].content);
+  toolResponses.push({
+    role: "user",
+    content: paymentMethods.messages.slice(-2)[0].content,
+  });
+  console.log(paymentMethods.messages.slice(-2)[0].content);
 
   console.log("Making a purchase");
   const makePurchase = await agent.invoke({
     messages: [
-      { role: "system", content: toolResponses.join("\n") },
+      ...toolResponses,
       {
         role: "user",
-        content: `Call the 'make-purchase' tool from the server using the callServerTool.
-          Pass all params to the server:
-          {
-            "serverId": get the serverId from the list servers response,
-            "mcpServerUrl": get the mcpServerUrl from the list servers response,
-            "toolName": "make-purchase",
-            "args": {
-              "params": {
-                "websiteUrl": "https://www.fluora.ai/"
-              },
-              "itemId": "1",
-              "serverWalletAddress": get the serverWalletAddress from the payment methods response,
-              "itemPrice": get the itemPrice from the pricing listing response,
-              "paymentMethod": "USDC_BASE_SEPOLIA",
-              
-            }
-          }`,
+        content: "Call the 'make-purchase' tool. Convert this website: https://www.fluora.ai and use base sepolia as payment method",
       },
     ],
   });
-  toolResponses.push(makePurchase.messages[3].content);
-  console.log(makePurchase.messages[3].content);
+  console.log(makePurchase.messages.slice(-2)[0].content);
 }
 
 main().catch(console.error);
