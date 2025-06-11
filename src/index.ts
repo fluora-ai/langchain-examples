@@ -1,12 +1,9 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatAnthropic } from '@langchain/anthropic';
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { loadMcpTools } from "@langchain/mcp-adapters";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { initializeAgentExecutorWithOptions } from "langchain/agents";
-import { loadMcpTools } from "@langchain/mcp-adapters";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import "dotenv/config";
-import { ClaudeCode } from "claude-code-js";
-import { ChatAnthropic } from '@langchain/anthropic';
 
 
 const initStdioClient = async () => {
