@@ -28,5 +28,9 @@
     "dotenv": "^16.5.0",
     "langchain": "^0.3.27",
     "mcp-use": "^0.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.14",
+    "typescript": "^5.8.3"
   }
 }
