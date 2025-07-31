@@ -200,7 +200,7 @@ console.log("Debug info:", JSON.stringify(data, null, 2));
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Support
 
